@@ -6,6 +6,7 @@ const {
 } = require("tapable");
 const NormalModuleFactory = require("./NormalModuleFactory");
 const Compilation = require("./Compilation");
+const State = require("./Stats");
 
 class Compiler {
   constructor(context) {
@@ -30,15 +31,12 @@ class Compiler {
     const finalCallback = (err, stats) => {
       callback(err, stats);
     };
+
     const onCompiled = (err, compilation) => {
       console.log("onCompiled");
-      finalCallback(err, {
-        entries: [],
-        chunks: [],
-        module: [],
-        assets: [],
-      }); //TODO
+      finalCallback(err, new State(compilation));
     };
+
     this.hooks.beforeRun.callAsync(this, (err) => {
       this.hooks.run.callAsync(this, (err) => {
         this.compile(onCompiled);
@@ -53,7 +51,7 @@ class Compiler {
       const compilation = this.newCompilation(params);
       this.hooks.make.callAsync(compilation, (err) => {
         console.log("make完成");
-        onCompiled();
+        onCompiled(err, compilation);
       });
     });
   }
