@@ -7,6 +7,8 @@ const {
 const NormalModuleFactory = require("./NormalModuleFactory");
 const Compilation = require("./Compilation");
 const State = require("./Stats");
+const { mkdirp } = require("mkdirp");
+const path = require("path");
 
 class Compiler {
   constructor(context) {
@@ -21,20 +23,19 @@ class Compiler {
       thisCompilation: new SyncHook(["compilation", "params"]),
       compilation: new SyncHook(["compilation", "params"]),
       afterCompile: new AsyncSeriesHook(["compilation"]),
+      emit: new AsyncSeriesHook(["compilation"]),
+      done: new AsyncSeriesHook(["stats"]),
     };
   }
 
   run(callback) {
-    console.log("Compiler run");
-
-    //最后回调
-    const finalCallback = (err, stats) => {
-      callback(err, stats);
-    };
-
     const onCompiled = (err, compilation) => {
-      console.log("onCompiled");
-      finalCallback(err, new State(compilation));
+      this.emitAssets(compilation, (err) => {
+        let stats = new State(compilation);
+        this.hooks.done.callAsync(stats, (err) => {
+          callback(err, stats);
+        });
+      });
     };
 
     this.hooks.beforeRun.callAsync(this, (err) => {
@@ -50,8 +51,11 @@ class Compiler {
       this.hooks.compile.call(params);
       const compilation = this.newCompilation(params);
       this.hooks.make.callAsync(compilation, (err) => {
-        console.log("make完成");
-        onCompiled(err, compilation);
+        compilation.seal((err) => {
+          this.hooks.afterCompile.callAsync(compilation, (err) => {
+            onCompiled(err, compilation);
+          });
+        });
       });
     });
   }
@@ -73,6 +77,25 @@ class Compiler {
 
   createCompilation() {
     return new Compilation(this);
+  }
+
+  emitAssets(compilation, callback) {
+    //把 chunk变成文件,写入硬盘
+    const emitFiles = (err) => {
+      const assets = compilation.assets;
+      let outputPath = this.options.output.path; //dist
+      for (let file in assets) {
+        let source = assets[file];
+        let targetPath = path.posix.join(outputPath, file);
+        this.outputFileSystem.writeFileSync(targetPath, source, "utf8");
+      }
+      callback();
+    };
+    //先触发emit的回调,在写插件的时候emit用的很多,因为它是我们修改输出内容的最后机会
+    this.hooks.emit.callAsync(compilation, () => {
+      //先创建输出目录dist,再写入文件
+      mkdirp(this.options.output.path, emitFiles);
+    });
   }
 }
 

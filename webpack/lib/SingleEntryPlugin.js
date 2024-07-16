@@ -11,7 +11,7 @@ class SingleEntryPlugin {
       (compilation, callback) => {
         const { context, entry, name } = this;
         console.log("make触发");
-        // compilation.addEntry(context, entry, name, callback);
+        compilation.addEntry(context, entry, name, callback);
       }
     );
   }

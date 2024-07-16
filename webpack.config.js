@@ -1,4 +1,5 @@
 const path = require("path");
+
 module.exports = {
   context: process.cwd(),
   mode: "development",
