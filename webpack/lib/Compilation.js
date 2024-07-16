@@ -9,10 +9,16 @@ const ejs = require("ejs");
 const fs = require("fs");
 const Chunk = require("./Chunk");
 const mainTemplate = fs.readFileSync(
-  path.join(__dirname, "templates", "main.ejs"),
+  path.join(__dirname, "templates", "asyncMain.ejs"),
   "utf8"
 );
 const mainRender = ejs.compile(mainTemplate);
+
+const chunkTemplate = fs.readFileSync(
+  path.join(__dirname, "templates", "chunk.ejs"),
+  "utf8"
+);
+const chunkRender = ejs.compile(chunkTemplate);
 
 class Compilation {
   constructor(compiler) {
@@ -35,12 +41,12 @@ class Compilation {
   }
 
   addEntry(context, entry, name, finalCallback) {
-    this._addModuleChain(context, entry, name, (err, module) => {
+    this._addModuleChain(context, entry, name, false, (err, module) => {
       finalCallback(err, module);
     });
   }
 
-  _addModuleChain(context, rawRequest, name, callback) {
+  _addModuleChain(context, rawRequest, name, async, callback) {
     this.createModule(
       {
         name,
@@ -128,10 +134,18 @@ class Compilation {
       const file = chunk.name + ".js"; //只是拿到了文件名
       chunk.files.push(file);
 
-      let source = mainRender({
-        entryModuleId: chunk.entryModule.moduleId, // ./src/index.js
-        modules: chunk.modules, //此代码块对应的模块数组[{moduleId:'./src/index.js'},{moduleId:'./src/title.js'}]
-      });
+      let source;
+      if (chunk.async) {
+        source = chunkRender({
+          chunkName: chunk.name,
+          modules: chunk.modules,
+        });
+      } else {
+        source = mainRender({
+          entryModuleId: chunk.entryModule.moduleId,
+          modules: chunk.modules,
+        });
+      }
 
       this.emitAssets(file, source);
     }
