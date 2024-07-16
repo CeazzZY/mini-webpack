@@ -5,3 +5,6 @@ import(/*webpackChunkName:'title'*/ "./title").then((res) => {
 import(/*webpackChunkName:'sum'*/ "./sum").then((res) => {
   console.log(res.default);
 });
+
+const isArray = require("isarray");
+console.log(isArray);

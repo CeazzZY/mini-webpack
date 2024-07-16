@@ -23,6 +23,9 @@ importers:
       ejs:
         specifier: ^3.1.10
         version: 3.1.10
+      isarray:
+        specifier: ^2.0.5
+        version: 2.0.5
       mkdirp:
         specifier: ^0.5.3
         version: 0.5.6
@@ -149,6 +152,9 @@ packages:
   is-finite@1.1.0:
     resolution: {integrity: sha512-cdyMtqX/BOqqNBBiKlIVkytNHm49MtMlYyn1zxzvJKWmFMlGzm+ry5BBfYyeY9YmNKbRSo/o7OX9w9ale0wg3w==}
     engines: {node: '>=0.10.0'}
+
+  isarray@2.0.5:
+    resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
   jake@10.9.1:
     resolution: {integrity: sha512-61btcOHNnLnsOdtLgA5efqQWjnSi/vow5HbI7HMdKKWqvrKR1bLK3BPlJn9gcSaP2ewuamUSMB5XEy76KUIS2w==}
@@ -355,6 +361,8 @@ snapshots:
       loose-envify: 1.4.0
 
   is-finite@1.1.0: {}
+
+  isarray@2.0.5: {}
 
   jake@10.9.1:
     dependencies:
