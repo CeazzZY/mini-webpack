@@ -9,7 +9,7 @@ const ejs = require("ejs");
 const fs = require("fs");
 const Chunk = require("./Chunk");
 const mainTemplate = fs.readFileSync(
-  path.join(__dirname, "templates", "asyncMain.ejs"),
+  path.join(__dirname, "templates", "deferMain.ejs"),
   "utf8"
 );
 const mainRender = ejs.compile(mainTemplate);
@@ -29,9 +29,13 @@ class Compilation {
     this.outputFileSystem = compiler.outputFileSystem;
     this.entries = [];
     this.modules = [];
+    this._modules = {};
     this.chunks = [];
     this.files = [];
     this.assets = {};
+    this.vendors = [];
+    this.commons = [];
+    this.moduleCount = {};
     this.hooks = {
       succeedModule: new SyncHook(["module"]),
       seal: new SyncHook(),
@@ -68,6 +72,8 @@ class Compilation {
     let module = normalModuleFactory.create(data);
     addEntry && addEntry(module);
     this.modules.push(module);
+    this._modules[module.moduleId] = module;
+
     const afterBuild = (err, module) => {
       if (module.dependencies.length > 0) {
         this.processModuleDependencies(module, (err) => {
@@ -115,14 +121,57 @@ class Compilation {
     this.hooks.seal.call();
     this.hooks.beforeChunks.call();
 
+    for (const module of this.modules) {
+      //如果模块ID中有node_modules内容,说明是一个第三方模块
+      if (/node_modules/.test(module.moduleId)) {
+        module.name = "vendors";
+        if (!this.vendors.find((item) => item.moduleId === module.moduleId))
+          this.vendors.push(module);
+      } else {
+        let count = this.moduleCount[module.moduleId];
+        if (count) {
+          this.moduleCount[module.moduleId].count++;
+        } else {
+          //如果没有,则给它赋初始值 {module,count} count是模块的引用次数
+          this.moduleCount[module.moduleId] = { module, count: 1 };
+        }
+      }
+    }
+    for (let moduleId in this.moduleCount) {
+      const { module, count } = this.moduleCount[moduleId];
+      if (count >= 2) {
+        module.name = "commons";
+        this.commons.push(module);
+      }
+    }
+
+    let deferredModuleIds = [...this.vendors, ...this.commons].map(
+      (module) => module.moduleId
+    );
+    this.modules = this.modules.filter(
+      (module) => !deferredModuleIds.includes(module.moduleId)
+    );
+
     for (const entryModule of this.entries) {
       const chunk = new Chunk(entryModule);
       this.chunks.push(chunk);
+
       chunk.modules = this.modules.filter(
         (module) => module.name === chunk.name
       );
     }
-
+    if (this.vendors.length > 0) {
+      const chunk = new Chunk(this.vendors[0]);
+      chunk.async = true;
+      this.chunks.push(chunk);
+      chunk.modules = this.vendors;
+    }
+    if (this.commons.length > 0) {
+      const chunk = new Chunk(this.commons[0]);
+      chunk.async = true;
+      this.chunks.push(chunk);
+      chunk.modules = this.commons;
+    }
     this.hooks.afterChunks.call(this.chunks);
     this.createChunkAssets();
     callback();
@@ -131,7 +180,7 @@ class Compilation {
   createChunkAssets() {
     for (let i = 0; i < this.chunks.length; i++) {
       const chunk = this.chunks[i];
-      const file = chunk.name + ".js"; //只是拿到了文件名
+      const file = chunk.name + ".js";
       chunk.files.push(file);
 
       let source;
@@ -141,8 +190,12 @@ class Compilation {
           modules: chunk.modules,
         });
       } else {
+        let deferredChunks = [];
+        if (this.vendors.length > 0) deferredChunks.push("vendors");
+        if (this.commons.length > 0) deferredChunks.push("commons");
         source = mainRender({
           entryModuleId: chunk.entryModule.moduleId,
+          deferredChunks,
           modules: chunk.modules,
         });
       }

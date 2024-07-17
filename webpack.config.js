@@ -4,7 +4,10 @@ module.exports = {
   context: process.cwd(),
   mode: "development",
   devtool: false,
-  entry: "./src/index.js",
+  entry: {
+    page1: "./src/page1.js",
+    page2: "./src/page2.js",
+  },
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "main.js",

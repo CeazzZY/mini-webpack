@@ -7,7 +7,13 @@ const itemToPlugin = (context, item, name) => {
 class EntryOptionPlugin {
   apply(compiler) {
     compiler.hooks.entryOption.tap("EntryOptionPlugin", (context, entry) => {
-      itemToPlugin(context, entry, "main").apply(compiler);
+      if (typeof entry === "string") {
+        itemToPlugin(context, entry, entryName).apply(compiler);
+      } else {
+        for (let entryName in entry) {
+          itemToPlugin(context, entry[entryName], entryName).apply(compiler);
+        }
+      }
     });
   }
 }
