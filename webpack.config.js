@@ -9,4 +9,15 @@ module.exports = {
     path: path.resolve(__dirname, "dist"),
     filename: "main.js",
   },
+  resolveLoader: {
+    modules: ["loaders", "node_modules"],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.less$/,
+        use: ["style-loader", "less-loader"],
+      },
+    ],
+  },
 };
